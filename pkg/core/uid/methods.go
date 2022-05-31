@@ -4,6 +4,10 @@
 
 package uid
 
+import (
+	"fmt"
+)
+
 type MethodID UID
 
 var (
@@ -35,3 +39,54 @@ var (
 	OpalRandom                 = MethodID{0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x06, 0x01}
 	OpalErase                  = MethodID{0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x08, 0x03}
 )
+
+func (mid MethodID) String() string {
+	switch mid {
+	case MethodIDSMProperties:
+		return "MethodIDSMProperties"
+	case MethodIDSMStartSession:
+		return "MethodIDSMStartSession"
+	case MethodIDSMSyncSession:
+		return "MethodIDSMSyncSession"
+	case MethodIDSMStartTrustedSession:
+		return "MethodIDSMStartTrustedSession"
+	case MethodIDSMSyncTrustedSession:
+		return "MethodIDSMSyncTrustedSession"
+	case MethodIDSMCloseSession:
+		return "MethodIDSMCloseSession"
+	case OpalProperties:
+		return "OpalProperties"
+	case OpalStartSession:
+		return "OpalStartSession"
+	case OpalRevert:
+		return "OpalRevert"
+	case OpalActivate:
+		return "OpalActivate"
+	case OpalEnterpriseGet:
+		return "OpalEnterpriseGet"
+	case OpalEnterpriseSet:
+		return "OpalEnterpriseSet"
+	case OpalNext:
+		return "OpalNext"
+	case OpalEnterpriseAuthenticate:
+		return "OpalEnterpriseAuthenticate"
+	case OpalGetACL:
+		return "OpalGetACL"
+	case OpalGenKey:
+		return "OpalGenKey"
+	case OpalRevertSP:
+		return "OpalRevertSP"
+	case OpalSet:
+		return "OpalSet"
+	case OpalGet:
+		return "OpalGet"
+	case OpalAuthenticate:
+		return "OpalAuthenticate"
+	case OpalRandom:
+		return "OpalRandom"
+	case OpalErase:
+		return "OpalErase"
+	}
+	return fmt.Sprintf("%v", mid)
+}
+
