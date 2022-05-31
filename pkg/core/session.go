@@ -32,6 +32,8 @@ var (
 
 const (
 	DefaultMaxComPacketSize uint = 1024 * 1024
+	DefaultReceiveRetries        = 100
+	DefaultReceiveInterval       = 10 * time.Millisecond
 )
 
 type ProtocolLevel uint
@@ -67,6 +69,8 @@ type Session struct {
 	SeqLastAcked    int
 	SeqNextExpected int
 	ReadOnly        bool // Ignored for Control Sessions
+	ReceiveRetries  int
+	ReceiveInterval time.Duration
 }
 
 type ControlSession struct {
@@ -74,6 +78,8 @@ type ControlSession struct {
 	HostProperties           HostProperties
 	TPerProperties           TPerProperties
 	MaxComPacketSizeOverride uint
+	ReceiveRetries           int
+	ReceiveInterval          time.Duration
 }
 
 type HostProperties struct {
@@ -162,6 +168,13 @@ func WithMaxComPacketSize(size uint) ControlSessionOpt {
 	}
 }
 
+func WithReceiveTimeout(retries int, interval time.Duration) ControlSessionOpt {
+	return func(s *ControlSession) {
+		s.ReceiveRetries = retries
+		s.ReceiveInterval = interval
+	}
+}
+
 func WithHSN(hsn int) SessionOpt {
 	return func(s *Session) {
 		s.HSN = hsn
@@ -207,15 +220,19 @@ func NewControlSession(d drive.DriveIntf, d0 *Level0Discovery, opts ...ControlSe
 	c := NewPlainCommunication(d, hp, tp)
 	s := &ControlSession{
 		Session: Session{
-			d:     d,
-			c:     c,
-			ComID: ComIDInvalid,
-			TSN:   0,
-			HSN:   0,
+			d:               d,
+			c:               c,
+			ComID:           ComIDInvalid,
+			TSN:             0,
+			HSN:             0,
+			ReceiveRetries:  DefaultReceiveRetries,
+			ReceiveInterval: DefaultReceiveInterval,
 		},
 		HostProperties:           hp,
 		TPerProperties:           tp,
 		MaxComPacketSizeOverride: DefaultMaxComPacketSize,
+		ReceiveRetries:           DefaultReceiveRetries,
+		ReceiveInterval:          DefaultReceiveInterval,
 	}
 
 	for _, opt := range opts {
@@ -321,14 +338,16 @@ func (cs *ControlSession) NewSession(spid uid.SPID, opts ...SessionOpt) (*Sessio
 	// then and the call to NewSession() we would be out of sync. Oh well...
 
 	s := &Session{
-		MethodFlags:    cs.MethodFlags,
-		ProtocolLevel:  cs.ProtocolLevel,
-		d:              cs.d,
-		c:              cs.c,
-		ControlSession: cs,
-		ComID:          cs.ComID,
-		TSN:            0,
-		HSN:            -1,
+		MethodFlags:     cs.MethodFlags,
+		ProtocolLevel:   cs.ProtocolLevel,
+		d:               cs.d,
+		c:               cs.c,
+		ControlSession:  cs,
+		ComID:           cs.ComID,
+		TSN:             0,
+		HSN:             -1,
+		ReceiveRetries:  cs.ReceiveRetries,
+		ReceiveInterval: cs.ReceiveInterval,
 	}
 
 	for _, opt := range opts {
@@ -523,7 +542,8 @@ func (s *Session) ExecuteMethod(mc *method.MethodCall) (stream.List, error) {
 	// > response, any IF-RECV command for that ComID SHALL receive a ComPacket with a
 	// > Length field value of zero (no payload), an OutstandingData field value of 0x01, and a
 	// > MinTransfer field value of zero.
-	for i := 100; i >= 0; i-- {
+
+	for i := s.ReceiveRetries; i >= 0; i-- {
 		resp, err = s.c.Receive(s)
 		if err != nil {
 			return nil, err
@@ -534,7 +554,7 @@ func (s *Session) ExecuteMethod(mc *method.MethodCall) (stream.List, error) {
 		if i == 0 {
 			return nil, method.ErrMethodTimeout
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(s.ReceiveInterval)
 	}
 
 	reply, err := stream.Decode(resp)
