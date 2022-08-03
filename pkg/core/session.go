@@ -592,11 +592,20 @@ func (s *Session) ExecuteMethod(mc *method.MethodCall) (stream.List, error) {
 		}
 	}
 
+	paddingEmptyAtomsCount := 0
+	for _, item := range reply {
+		if tok, ok1 := item.(stream.TokenType); ok1 {
+			if tok == stream.EmptyAtom {
+				paddingEmptyAtomsCount++
+			}
+		}
+	}
+
 	// While the normal method result format is known, the Session Manager
 	// methods use a different format. What is in common however is that
 	// the last element should be the status code list.
-	tok, ok1 := reply[len(reply)-2].(stream.TokenType)
-	status, ok2 := reply[len(reply)-1].(stream.List)
+	tok, ok1 := reply[len(reply)-paddingEmptyAtomsCount-2].(stream.TokenType)
+	status, ok2 := reply[len(reply)-paddingEmptyAtomsCount-1].(stream.List)
 	if !ok1 || !ok2 || tok != stream.EndOfData {
 		return nil, method.ErrMalformedMethodResponse
 	}
@@ -613,7 +622,7 @@ func (s *Session) ExecuteMethod(mc *method.MethodCall) (stream.List, error) {
 		return nil, err
 	}
 
-	return reply[:len(reply)-2], nil
+	return reply[:len(reply)-paddingEmptyAtomsCount-2], nil
 }
 
 // Execute a prepared Method call but do not expect anything in return.
