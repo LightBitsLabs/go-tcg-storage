@@ -1,0 +1,13 @@
+go-tcg-storage:
+  go-tcg-storage:
+    deps:
+    - file://cmd
+    - file://go.mod
+    - file://go.sum
+    - file://lb.yaml
+    - file://LICENSE
+    - file://Makefile
+    - file://pkg
+    - file://README.md
+    - file://renovate.json
+
